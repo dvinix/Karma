@@ -1,4 +1,4 @@
-package com.dvinix.karma.ui.theme
+package com.dvinix.karma.core.theme
 
 import androidx.compose.ui.graphics.Color
 
