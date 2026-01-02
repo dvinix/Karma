@@ -28,10 +28,10 @@ class TasksViewModel(private val taskDao: TaskDao) : ViewModel() {
     // 2. Handling Actions
     // We use viewModelScope.launch to run database work on a background thread.
     // This prevents the UI from freezing.
-    fun addTask(title: String, description: String, color: Long) {
+    fun addTask(title: String) {
         viewModelScope.launch {
             taskDao.insertTask(
-                Task(title = title, description = description, colorHex = color)
+                Task(title = title)
             )
         }
     }

@@ -17,7 +17,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dvinix.karma.core.theme.KarmaTheme
 import com.dvinix.karma.data.local.Task
 
 
@@ -55,54 +57,44 @@ fun TaskItem(
     task: Task,
     onToggleCompleted: (Boolean) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF1A1A1A)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        // This ensures the checkbox and title are perfectly aligned
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Colored Accent Line
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(4.dp)
-                    .background(Color(task.colorHex))
+        RoundCheckbox(
+            isCompleted = task.isCompleted,
+            onCheckedChange = onToggleCompleted,
+            accentColor = Color.White
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Text(
+            text = task.title,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                color = if (task.isCompleted) Color.DarkGray else Color.White,
+                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
+                fontWeight = FontWeight.Medium
+            ),
+            modifier = Modifier.weight(1f)
+        )
+        // Delete icon removed to match your minimalist "Inbox" reference
+    }
+}
+
+
+@Preview(showBackground = true, backgroundColor = 0x000000)
+@Composable
+fun KarmaTaskPreview() {
+    MaterialTheme {
+        Surface(color = Color.Black, modifier = Modifier.fillMaxSize()) {
+            TaskItem(
+                task = Task(title = "Write blog post", isCompleted = false),
+                onToggleCompleted = {}
             )
-
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .weight(1f)
-            ) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = if (task.isCompleted) Color.Gray else Color.White,
-                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
-                    )
-                )
-                if (task.description.isNotEmpty()) {
-                    Text(
-                        text = task.description,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = if (task.isCompleted) Color.DarkGray else Color.Gray
-                        )
-                    )
-                }
-            }
-
-            // The New Round Checkbox
-            Box(modifier = Modifier.padding(end = 16.dp)) {
-                RoundCheckbox(
-                    isCompleted = task.isCompleted,
-                    onCheckedChange = onToggleCompleted,
-                    accentColor = Color(task.colorHex)
-                )
-            }
         }
     }
 }

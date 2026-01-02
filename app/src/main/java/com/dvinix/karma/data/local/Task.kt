@@ -10,7 +10,5 @@ data class Task(
     val id: Int = 0,
     val title: String,
     val isCompleted: Boolean = false,
-    val description: String = "",
-    val colorHex: Long = 0xFF6200EE,
     val createdAt: Long = System.currentTimeMillis()
 )
