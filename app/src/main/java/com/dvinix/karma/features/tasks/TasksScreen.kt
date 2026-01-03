@@ -1,15 +1,19 @@
 package com.dvinix.karma.features.tasks
 
+
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,15 +23,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dvinix.karma.core.theme.KarmaTheme
 import com.dvinix.karma.features.tasks.components.HorizontalCalendar
-
-
+import androidx.compose.ui.text.input.ImeAction
+import java.util.Calendar
 
 
 
@@ -62,17 +63,31 @@ fun SwipeToDeleteContainer(
 }
 
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskInputPopup(onAdd: (String) -> Unit) {
+fun TaskInputPopup(
+    onAdd: (String, Long?, Int?, Int?) -> Unit
+) {
     var text by remember { mutableStateOf("") }
+    var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
+    var selectedHour by remember { mutableStateOf<Int?>(null) }
+    var selectedMinute by remember { mutableStateOf<Int?>(null) }
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var reminderEnabled by remember { mutableStateOf(false) }
+
     val focusRequester = remember { FocusRequester() }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .fillMaxHeight(0.5f) // Half screen
             .padding(24.dp)
-            .imePadding() // Moves popup up when keyboard appears
+            .imePadding()
     ) {
+        // Back to BasicTextField for that "clean" look
         BasicTextField(
             value = text,
             onValueChange = { text = it },
@@ -81,6 +96,10 @@ fun TaskInputPopup(onAdd: (String) -> Unit) {
                 .focusRequester(focusRequester),
             textStyle = MaterialTheme.typography.headlineSmall.copy(color = Color.White),
             cursorBrush = SolidColor(Color.White),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = { if (text.isNotBlank()) onAdd(text, selectedDateMillis, selectedHour, selectedMinute) }
+            ),
             decorationBox = { innerTextField ->
                 if (text.isEmpty()) Text("I want to...", color = Color.DarkGray, style = MaterialTheme.typography.headlineSmall)
                 innerTextField()
@@ -89,14 +108,122 @@ fun TaskInputPopup(onAdd: (String) -> Unit) {
 
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-        Spacer(modifier = Modifier.height(44.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        TextButton(
-            onClick = { if (text.isNotBlank()) onAdd(text) },
-            modifier = Modifier.align(Alignment.End)
+        // Minimalist Reminder Toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    reminderEnabled = !reminderEnabled
+                    if (reminderEnabled) showDatePicker = true
+                },
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
+            Icon(
+                imageVector = if (reminderEnabled) Icons.Default.Notifications else Icons.Default.Notifications,
+                contentDescription = null,
+                tint = if (reminderEnabled) Color.White else Color.DarkGray
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = if (reminderEnabled) "Reminder: On" else "Add Reminder",
+                color = if (reminderEnabled) Color.White else Color.DarkGray
+            )
         }
+    }
+
+    // Picker Logic
+    if (showDatePicker) {
+        DatePickerModal(
+            onDateSelected = {
+                selectedDateMillis = it
+                showDatePicker = false
+                showTimePicker = true
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
+
+    if (showTimePicker) {
+        TimePickerModal(
+            onConfirm = { h, m ->
+                selectedHour = h
+                selectedMinute = m
+                showTimePicker = false
+            },
+            onDismiss = { showTimePicker = false }
+        )
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerModal(
+    onConfirm: (Int, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val currentTime = Calendar.getInstance()
+    val timePickerState = rememberTimePickerState(
+        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
+        initialMinute = currentTime.get(Calendar.MINUTE),
+        is24Hour = false // This enables AM/PM selection
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
+                Text("Confirm", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Color.Gray) }
+        },
+        containerColor = Color(0xFF1A1A1A), // Charcoal Theme
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Set Time", color = Color.White, modifier = Modifier.padding(bottom = 16.dp))
+                TimeInput(
+                    state = timePickerState,
+                    colors = TimePickerDefaults.colors(
+                        periodSelectorSelectedContainerColor = Color.White,
+                        periodSelectorSelectedContentColor = Color.Black,
+                        timeSelectorSelectedContainerColor = Color(0xFF333333),
+                        timeSelectorSelectedContentColor = Color.White
+                    )
+                )
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerModal(
+    onDateSelected: (Long?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState()
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                onDateSelected(datePickerState.selectedDateMillis)
+                onDismiss()
+            }) {
+                Text("OK", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color.Gray)
+            }
+        },
+        colors = DatePickerDefaults.colors(
+            containerColor = Color(0xFF1A1A1A) // Matching your minimalist dark theme
+        )
+    ) {
+        DatePicker(state = datePickerState)
     }
 }
 
@@ -113,24 +240,6 @@ fun TasksScreen(
 
     Scaffold(
         containerColor = Color.Black,
-        topBar = {
-            // App Name "KARMA" as requested
-            TopAppBar(
-                title = {
-                    Text(
-                        "KARMA",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 2.sp
-                        )
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black,
-                    titleContentColor = Color.White
-                )
-            )
-        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showPopup = true },
@@ -148,6 +257,16 @@ fun TasksScreen(
                 .padding(horizontal = 20.dp)
                 .fillMaxSize()
         ) {
+            Text(
+                text = "KARMA",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 4.sp
+                ),
+                color = Color.White,
+                modifier = Modifier.padding(top = 8.dp) // Minimal gap from notch
+            )
+
             HorizontalCalendar()
 
             Text(
@@ -174,12 +293,17 @@ fun TasksScreen(
         if (showPopup) {
             ModalBottomSheet(
                 onDismissRequest = { showPopup = false },
-                containerColor = Color(0xFF121212)
+                containerColor = Color(0xFF121212),
+                // This ensures the sheet reaches the 50% height we set in the Column
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             ) {
-                TaskInputPopup(onAdd = { title ->
-                    viewModel.addTask(title)
-                    showPopup = false
-                })
+                TaskInputPopup(
+                    onAdd = { title, date, hour, min ->
+                        // Now you can save these to your Room Database!
+                        viewModel.addTask(title, date, hour, min)
+                        showPopup = false
+                    }
+                )
             }
         }
     }

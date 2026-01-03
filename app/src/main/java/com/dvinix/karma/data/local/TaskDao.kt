@@ -20,5 +20,8 @@ interface TaskDao {
     @Delete
     suspend fun deleteTask(task: Task)
 
+    // Get tasks by specific folder (e.g., 'Second Brain')
+    @Query("SELECT * FROM tasks WHERE category = :folderName ORDER BY createdAt DESC")
+    fun getTasksByFolder(folderName: String): Flow<List<Task>>
 
 }

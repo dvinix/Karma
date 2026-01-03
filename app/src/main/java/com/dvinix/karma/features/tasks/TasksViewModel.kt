@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.sql.Date
 
 class TasksViewModel(private val taskDao: TaskDao) : ViewModel() {
 
@@ -28,11 +29,22 @@ class TasksViewModel(private val taskDao: TaskDao) : ViewModel() {
     // 2. Handling Actions
     // We use viewModelScope.launch to run database work on a background thread.
     // This prevents the UI from freezing.
-    fun addTask(title: String) {
+    fun addTask(
+        title: String,
+        date: Long?,
+        hour: Int?,
+        minute: Int?,
+        folder: String = "Inbox"
+    ) {
         viewModelScope.launch {
-            taskDao.insertTask(
-                Task(title = title)
+            val newTask = Task(
+                title = title,
+                category = folder,
+                reminderDate = date,
+                reminderHour = hour,
+                reminderMinute = minute
             )
+            taskDao.insertTask(newTask)
         }
     }
 

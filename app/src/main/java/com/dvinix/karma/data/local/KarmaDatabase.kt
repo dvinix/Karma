@@ -8,7 +8,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 
-@Database(entities = [Task::class], version = 3, exportSchema = false)
+@Database(entities = [Task::class], version = 4, exportSchema = false)
 abstract class KarmaDatabase : RoomDatabase() {
 
     abstract fun taskDao(): TaskDao  // connect our Dao to the Database
