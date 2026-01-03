@@ -1,5 +1,6 @@
 package com.dvinix.karma.navigation
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,7 +16,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.dvinix.karma.R
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -25,6 +29,12 @@ import androidx.navigation3.ui.NavDisplay
 import com.dvinix.karma.features.tasks.TasksScreen
 import com.dvinix.karma.features.tasks.TasksViewModel
 import kotlinx.serialization.Serializable
+
+
+sealed class BottomBarIcon {
+    data class Vector(val imageVector: ImageVector) : BottomBarIcon()
+    data class Drawable(@DrawableRes val resId: Int) : BottomBarIcon()
+}
 
 @Serializable
 sealed interface Screen {
@@ -45,10 +55,10 @@ fun KarmaBottomBar(
         tonalElevation = 0.dp
     ) {
         val items = listOf(
-            Triple("Habits", Icons.Default.DateRange, Screen.Habits),
-            Triple("Tasks", Icons.AutoMirrored.Filled.List, Screen.Tasks),
-            Triple("Focus", Icons.Default.Build, Screen.Focus), // Changed to Timer
-            Triple("Settings", Icons.Default.Settings, Screen.Settings)
+            Triple("Habits", BottomBarIcon.Vector(Icons.Default.DateRange), Screen.Habits),
+            Triple("Tasks", BottomBarIcon.Vector(Icons.AutoMirrored.Filled.List), Screen.Tasks),
+            Triple("Focus", BottomBarIcon.Drawable(R.drawable.hourglass), Screen.Focus),
+            Triple("Settings", BottomBarIcon.Vector(Icons.Default.Settings), Screen.Settings)
         )
 
         items.forEach { (label, icon, screen) ->
@@ -57,11 +67,18 @@ fun KarmaBottomBar(
                 selected = isSelected,
                 onClick = { onScreenSelected(screen) },
                 icon = {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        tint = if (isSelected) Color.White else Color.DarkGray
-                    )
+                    when (icon) {
+                        is BottomBarIcon.Vector -> Icon(
+                            imageVector = icon.imageVector,
+                            contentDescription = label,
+                            tint = if (isSelected) Color.White else Color.DarkGray
+                        )
+                        is BottomBarIcon.Drawable -> Icon(
+                            painter = painterResource(icon.resId),
+                            contentDescription = label,
+                            tint = if (isSelected) Color.White else Color.DarkGray
+                        )
+                    }
                 },
                 label = {
                     Text(
@@ -74,6 +91,7 @@ fun KarmaBottomBar(
                     indicatorColor = Color(0xFF1A1A1A)
                 )
             )
+
         }
     }
 }

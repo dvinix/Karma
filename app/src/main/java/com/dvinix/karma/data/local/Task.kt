@@ -10,9 +10,9 @@ data class Task(
     val id: Int = 0,
     val title: String,
     val isCompleted: Boolean = false,
-    val category: String = "Inbox", // Default folder
-    val reminderDate: Long? = null, // Selected date millis
-    val reminderHour: Int? = null, // Selected hour (0-23)
-    val reminderMinute: Int? = null, // Selected minute (0-59)
+    val category: String = "Inbox",
+    val reminderDate: Long? = null,
+    val reminderHour: Int? = null,
+    val reminderMinute: Int? = null,
     val createdAt: Long = System.currentTimeMillis()
 )

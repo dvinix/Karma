@@ -1,6 +1,10 @@
 package com.dvinix.karma.features.tasks
 
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,9 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +26,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,6 +34,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dvinix.karma.features.tasks.components.HorizontalCalendar
 import androidx.compose.ui.text.input.ImeAction
 import java.util.Calendar
+import com.dvinix.karma.R
+
 
 
 
@@ -69,6 +76,13 @@ fun SwipeToDeleteContainer(
 fun TaskInputPopup(
     onAdd: (String, Long?, Int?, Int?) -> Unit
 ) {
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        // Logic if user grants/denies
+    }
+
     var text by remember { mutableStateOf("") }
     var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
     var selectedHour by remember { mutableStateOf<Int?>(null) }
@@ -80,10 +94,16 @@ fun TaskInputPopup(
 
     val focusRequester = remember { FocusRequester() }
 
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.5f) // Half screen
+            .fillMaxHeight(.5f)
             .padding(24.dp)
             .imePadding()
     ) {
@@ -101,14 +121,14 @@ fun TaskInputPopup(
                 onDone = { if (text.isNotBlank()) onAdd(text, selectedDateMillis, selectedHour, selectedMinute) }
             ),
             decorationBox = { innerTextField ->
-                if (text.isEmpty()) Text("I want to...", color = Color.DarkGray, style = MaterialTheme.typography.headlineSmall)
+                if (text.isEmpty()) Text("Add a Task...", color = Color.DarkGray, style = MaterialTheme.typography.headlineSmall)
                 innerTextField()
             }
         )
 
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Minimalist Reminder Toggle
         Row(
@@ -121,7 +141,7 @@ fun TaskInputPopup(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (reminderEnabled) Icons.Default.Notifications else Icons.Default.Notifications,
+                painter = painterResource(id = R.drawable.reminder),
                 contentDescription = null,
                 tint = if (reminderEnabled) Color.White else Color.DarkGray
             )

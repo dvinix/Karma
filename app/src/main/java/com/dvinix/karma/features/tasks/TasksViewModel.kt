@@ -1,5 +1,12 @@
 package com.dvinix.karma.features.tasks
 
+import android.app.AlarmManager
+import android.app.Application
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,8 +20,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.sql.Date
+import java.util.Calendar
 
-class TasksViewModel(private val taskDao: TaskDao) : ViewModel() {
+class TasksViewModel(application: Application, private val taskDao: TaskDao) : AndroidViewModel(application) {
 
     // 1. Transforming Data (The "State")
     // We take the "Flow" from the database and turn it into a "StateFlow".
@@ -45,9 +53,47 @@ class TasksViewModel(private val taskDao: TaskDao) : ViewModel() {
                 reminderMinute = minute
             )
             taskDao.insertTask(newTask)
+
+            if (date != null && hour != null && minute != null) {
+                scheduleNotification(title, date, hour, minute)
+            }
         }
     }
+    private fun scheduleNotification(title: String, dateMillis: Long, hour: Int, minute: Int) {
+        val context = getApplication<Application>().applicationContext
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = dateMillis
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+        }
+
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            putExtra("TASK_TITLE", title)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            title.hashCode(), // Unique ID per task
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                // Option: Redirect user to settings or use non-exact alarm
+                val intent = Intent().apply {
+                    action = android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+                }
+                context.startActivity(intent)
+                return
+            }
+        }
+
+
+    }
     fun deleteTask(task: Task) {
         viewModelScope.launch {
             taskDao.deleteTask(task)
@@ -68,7 +114,7 @@ class TasksViewModel(private val taskDao: TaskDao) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as KarmaApp)
-                TasksViewModel(application.database.taskDao())
+                TasksViewModel(application,application.database.taskDao())
             }
         }
     }
