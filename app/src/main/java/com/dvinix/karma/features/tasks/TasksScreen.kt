@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,15 +18,23 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,8 +42,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dvinix.karma.features.tasks.components.HorizontalCalendar
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import java.util.Calendar
 import com.dvinix.karma.R
+import androidx.compose.ui.tooling.preview.Preview
+import com.dvinix.karma.core.theme.KarmaTheme
 
 
 
@@ -94,6 +106,16 @@ fun TaskInputPopup(
 
     val focusRequester = remember { FocusRequester() }
 
+    val onPerformAdd = {
+        if (text.isNotBlank()) {
+
+            onAdd(text, selectedDateMillis, selectedHour, selectedMinute)
+            text = ""
+            reminderEnabled = false
+            selectedDateMillis = null
+
+        }
+    }
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -107,49 +129,111 @@ fun TaskInputPopup(
             .padding(24.dp)
             .imePadding()
     ) {
-        // Back to BasicTextField for that "clean" look
-        BasicTextField(
-            value = text,
-            onValueChange = { text = it },
+        // 1. Placeholder above the field
+        Text(
+            text = "Pause. What matters right now?",
+            color = Color.Gray,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 2. Gradient Curved Border Input Field
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester),
-            textStyle = MaterialTheme.typography.headlineSmall.copy(color = Color.White),
-            cursorBrush = SolidColor(Color.White),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(
-                onDone = { if (text.isNotBlank()) onAdd(text, selectedDateMillis, selectedHour, selectedMinute) }
-            ),
-            decorationBox = { innerTextField ->
-                if (text.isEmpty()) Text("Add a Task...", color = Color.DarkGray, style = MaterialTheme.typography.headlineSmall)
-                innerTextField()
-            }
-        )
+                .height(64.dp)
+                .background(
+                    color = Color(0xFFF5F5F5), // Light off-white background
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.5f), Color.Gray.copy(alpha = 0.2f))
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onPreviewKeyEvent {
+
+                        if (it.key == Key.Enter && it.type == KeyEventType.KeyDown) {
+                            if (text.isNotBlank()) onAdd(text, selectedDateMillis, selectedHour, selectedMinute)
+                            true
+                        } else false
+                    },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.DarkGray),
+                cursorBrush = SolidColor(Color.DarkGray),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = { if (text.isNotBlank()) onAdd(text, selectedDateMillis, selectedHour, selectedMinute) }
+                )
+            )
+        }
 
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Minimalist Reminder Toggle
-        Row(
+        // 3. Add Reminder Card (Matching the image style)
+        Surface(
+            onClick = {
+                reminderEnabled = !reminderEnabled
+                if (reminderEnabled) showDatePicker = true
+            },
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            modifier = Modifier.fillMaxWidth().height(60.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.reminder),
+                    contentDescription = null,
+                    tint = if (reminderEnabled) Color(0xFF2E4D44) else Color.Gray,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = if (reminderEnabled) "Reminder: Set" else "Add Reminder",
+                    color = if (reminderEnabled) Color(0xFF2E4D44) else Color.Gray,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = Color.LightGray
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = { onPerformAdd() },
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    reminderEnabled = !reminderEnabled
-                    if (reminderEnabled) showDatePicker = true
-                },
-            verticalAlignment = Alignment.CenterVertically
+                .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF4A4A4A), // Dark Charcoal
+                contentColor = Color.White
+            )
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.reminder),
-                contentDescription = null,
-                tint = if (reminderEnabled) Color.White else Color.DarkGray
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = if (reminderEnabled) "Reminder: On" else "Add Reminder",
-                color = if (reminderEnabled) Color.White else Color.DarkGray
-            )
+            Text("Add Task", style = MaterialTheme.typography.titleMedium)
         }
     }
 
@@ -329,3 +413,10 @@ fun TasksScreen(
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun TaskInputPopupPreview() {
+    KarmaTheme {
+        TaskInputPopup(onAdd = { _, _, _, _ -> })
+    }
+}

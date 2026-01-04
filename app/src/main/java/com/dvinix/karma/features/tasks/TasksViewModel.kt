@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.sql.Date
 import java.util.Calendar
 
 class TasksViewModel(application: Application, private val taskDao: TaskDao) : AndroidViewModel(application) {
@@ -63,12 +62,17 @@ class TasksViewModel(application: Application, private val taskDao: TaskDao) : A
         val context = getApplication<Application>().applicationContext
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
+        // Set the specific time on the calendar
         val calendar = Calendar.getInstance().apply {
             timeInMillis = dateMillis
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }
+
+        // Guard against scheduling an alarm in the past
+        if (calendar.timeInMillis <= System.currentTimeMillis()) return
 
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             putExtra("TASK_TITLE", title)
@@ -76,23 +80,30 @@ class TasksViewModel(application: Application, private val taskDao: TaskDao) : A
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            title.hashCode(), // Unique ID per task
+            title.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Handle Exact Alarm Permission for Android 12+ (API 31+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!alarmManager.canScheduleExactAlarms()) {
-                // Option: Redirect user to settings or use non-exact alarm
-                val intent = Intent().apply {
+                val settingsIntent = Intent().apply {
                     action = android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                context.startActivity(intent)
+                context.startActivity(settingsIntent)
                 return
             }
         }
 
-
+        // 3. The Final Step: Actually schedule the alarm
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
     }
     fun deleteTask(task: Task) {
         viewModelScope.launch {

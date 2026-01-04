@@ -18,6 +18,7 @@
 
         <receiver
             android:name=".features.tasks.ReminderReceiver"
+            android:enabled="true"
             android:exported="false" />
 
         <activity
