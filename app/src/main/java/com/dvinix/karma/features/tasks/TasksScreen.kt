@@ -47,8 +47,7 @@ import java.util.Calendar
 import com.dvinix.karma.R
 import androidx.compose.ui.tooling.preview.Preview
 import com.dvinix.karma.core.theme.KarmaTheme
-
-
+import com.dvinix.karma.features.tasks.components.CategoryHeader
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,7 +124,7 @@ fun TaskInputPopup(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(.5f)
+            .fillMaxHeight(.4f)
             .padding(24.dp)
             .imePadding()
     ) {
@@ -133,7 +132,7 @@ fun TaskInputPopup(
         Text(
             text = "Pause. What matters right now?",
             color = Color.Gray,
-            fontSize = 16.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Medium,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
@@ -373,17 +372,17 @@ fun TasksScreen(
 
             HorizontalCalendar()
 
-            Text(
-                "Inbox",
-                style = MaterialTheme.typography.titleLarge.copy(color = Color.White),
-                modifier = Modifier.padding(vertical = 12.dp)
+            CategoryHeader(
+                onCategoryAdded = {
+                    // Handle adding a new category here (e.g., show a Dialog)
+                }
             )
 
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(4.dp) // Tight, clean spacing
             ) {
                 items(tasks, key = { it.id }) { task ->
-                    // DELETE BUTTON REMOVED: Now only swipe or check
+
                     SwipeToDeleteContainer(onDelete = { viewModel.deleteTask(task) }) {
                         TaskItem(
                             task = task,
