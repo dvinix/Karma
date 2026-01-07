@@ -15,30 +15,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.format.TextStyle
-import java.time.temporal.TemporalAdjusters
+import java.text.SimpleDateFormat
 import java.util.*
 
 // Data class to hold our dynamic date info
 data class CalendarDay(
     val dayName: String,
     val dayNumber: Int,
-    val fullDate: LocalDate
+    val fullDate: Calendar
 )
 
 @Composable
 fun HorizontalCalendar(modifier: Modifier = Modifier) {
-    val today = remember { LocalDate.now() }
+    val today = remember { Calendar.getInstance() }
     val currentWeek = remember {
         // Find Monday of the current week
-        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
         (0..6).map { i ->
-            val date = monday.plusDays(i.toLong())
+            val date = calendar.clone() as Calendar
+            date.add(Calendar.DAY_OF_WEEK, i)
             CalendarDay(
-                dayName = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
-                dayNumber = date.dayOfMonth,
+                dayName = SimpleDateFormat("EEE", Locale.getDefault()).format(date.time).uppercase(),
+                dayNumber = date.get(Calendar.DAY_OF_MONTH),
                 fullDate = date
             )
         }
@@ -47,7 +46,7 @@ fun HorizontalCalendar(modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxWidth().padding(vertical = 16.dp)) {
         // Current Month Header
         Text(
-            text = today.month.getDisplayName(TextStyle.FULL, Locale.getDefault()),
+            text = SimpleDateFormat("MMMM", Locale.getDefault()).format(today.time),
             color = Color.Gray,
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 4.dp)
@@ -60,7 +59,7 @@ fun HorizontalCalendar(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             items(currentWeek) { day ->
-                val isToday = day.fullDate == today
+                val isToday = isSameDay(day.fullDate, today)
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -84,4 +83,9 @@ fun HorizontalCalendar(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
 }
