@@ -15,38 +15,109 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dvinix.karma.KarmaApp
 import com.dvinix.karma.data.local.Task
 import com.dvinix.karma.data.local.TaskDao
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class TasksViewModel(application: Application, private val taskDao: TaskDao) : AndroidViewModel(application) {
+class TasksViewModel(
+    application: Application,
+    private val taskDao: TaskDao
+) : AndroidViewModel(application) {
 
-    // 1. Transforming Data (The "State")
-    // We take the "Flow" from the database and turn it into a "StateFlow".
-    // StateFlow is what Jetpack Compose uses to know when to redraw the screen.
-    val uiState: StateFlow<List<Task>> = taskDao.getAllTasks()
+    // Store categories persistently in a separate flow
+    private val _permanentCategories = MutableStateFlow<Set<String>>(setOf("Inbox"))
+    
+    // Selected category state
+    private val _selectedCategory = MutableStateFlow("Inbox")
+    val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
+
+    // Combine permanent categories with categories from tasks
+    val categories: StateFlow<List<String>> = combine(
+        _permanentCategories,
+        taskDao.getAllCategories()
+    ) { permanent, fromTasks ->
+        (permanent + fromTasks).distinct().sorted()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = listOf("Inbox")
+    )
+
+    // Tasks filtered by selected category
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<List<Task>> = _selectedCategory
+        .flatMapLatest { category ->
+            taskDao.getTasksByCategory(category)
+        }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000), // Hibernate if app is hidden
+            started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    // 2. Handling Actions
-    // We use viewModelScope.launch to run database work on a background thread.
-    // This prevents the UI from freezing.
+    // Select a category
+    fun selectCategory(categoryName: String) {
+        _selectedCategory.value = categoryName
+    }
+
+    // Add a new category
+    fun addCategory(name: String) {
+        viewModelScope.launch {
+            if (name.isNotBlank() && !categories.value.contains(name)) {
+                // Add to permanent categories set
+                _permanentCategories.update { current ->
+                    current + name
+                }
+                // Also select the new category
+                _selectedCategory.value = name
+            }
+        }
+    }
+
+    fun deleteCategory(categoryName: String) {
+        if (categoryName == "Inbox") return // Don't allow deleting Inbox
+        
+        viewModelScope.launch {
+            // Remove from permanent categories
+            _permanentCategories.update { current ->
+                current - categoryName
+            }
+            
+            // Move all tasks in this category to Inbox
+            val tasksInCategory = taskDao.getTasksByCategory(categoryName).first()
+            tasksInCategory.forEach { task ->
+                taskDao.updateTask(task.copy(category = "Inbox"))
+            }
+            
+            // Switch to Inbox if we were viewing the deleted category
+            if (_selectedCategory.value == categoryName) {
+                _selectedCategory.value = "Inbox"
+            }
+        }
+    }
+
+    // Add task to current selected category
     fun addTask(
         title: String,
         date: Long?,
         hour: Int?,
         minute: Int?,
-        folder: String = "Inbox"
+        category: String = _selectedCategory.value
     ) {
         viewModelScope.launch {
             val newTask = Task(
                 title = title,
-                category = folder,
+                category = category,
                 reminderDate = date,
                 reminderHour = hour,
                 reminderMinute = minute
@@ -113,19 +184,30 @@ class TasksViewModel(application: Application, private val taskDao: TaskDao) : A
 
     fun toggleTaskCompletion(task: Task, isCompleted: Boolean) {
         viewModelScope.launch {
-            // Create a copy of the task with the updated status
             val updatedTask = task.copy(isCompleted = isCompleted)
-            taskDao.insertTask(updatedTask) // Room 'insert' with OnConflict.REPLACE acts as an update
+            taskDao.updateTask(updatedTask)
         }
     }
 
-    // 3. The Factory (The "Dependency Injector")
-    // This tells Android how to create this ViewModel and give it the TaskDao.
+    // Update an existing task
+    fun updateTask(task: Task, newTitle: String, newCategory: String? = null) {
+        viewModelScope.launch {
+            val updatedTask = task.copy(
+                title = newTitle,
+                category = newCategory ?: task.category
+            )
+            taskDao.updateTask(updatedTask)
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as KarmaApp)
-                TasksViewModel(application,application.database.taskDao())
+                TasksViewModel(
+                    application,
+                    application.database.taskDao()
+                )
             }
         }
     }

@@ -3,6 +3,7 @@ package com.dvinix.karma.features.tasks
 
 import android.Manifest
 import android.os.Build
+import android.widget.Space
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,13 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dvinix.karma.features.tasks.components.HorizontalCalendar
+import com.dvinix.karma.features.tasks.components.CategorySelector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import java.util.Calendar
 import com.dvinix.karma.R
 import androidx.compose.ui.tooling.preview.Preview
 import com.dvinix.karma.core.theme.KarmaTheme
-import com.dvinix.karma.features.tasks.components.CategoryHeader
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,6 +150,7 @@ fun TaskInputPopup(
                     color = Color(0xFFF5F5F5), // Light off-white background
                     shape = RoundedCornerShape(16.dp)
                 )
+
                 .border(
                     width = 1.dp,
                     brush = Brush.linearGradient(
@@ -339,6 +342,8 @@ fun TasksScreen(
     onNavigateToSettings: () -> Unit
 ) {
     val tasks by viewModel.uiState.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     var showPopup by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -367,27 +372,61 @@ fun TasksScreen(
                     letterSpacing = 4.sp
                 ),
                 color = Color.White,
-                modifier = Modifier.padding(top = 8.dp) // Minimal gap from notch
+                modifier = Modifier.padding(top = 8.dp)
             )
 
             HorizontalCalendar()
 
-            CategoryHeader(
-                onCategoryAdded = {
-                    // Handle adding a new category here (e.g., show a Dialog)
-                }
+            // Category Selector
+            CategorySelector(
+                categories = categories,
+                selectedCategory = selectedCategory,
+                onCategorySelect = { viewModel.selectCategory(it) },
+                onAddCategory = { viewModel.addCategory(it) },
+                onDeleteCategory = { viewModel.deleteCategory(it) }
             )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp) // Tight, clean spacing
-            ) {
-                items(tasks, key = { it.id }) { task ->
-
-                    SwipeToDeleteContainer(onDelete = { viewModel.deleteTask(task) }) {
-                        TaskItem(
-                            task = task,
-                            onToggleCompleted = { viewModel.toggleTaskCompletion(task, it) }
+            // Task List or Empty State
+            if (tasks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier =  Modifier.padding(top = 120.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.List,
+                            contentDescription = "No Tasks",
+                            tint = Color.Gray.copy(alpha = 0.3f),
+                            modifier = Modifier.size(120.dp)
                         )
+                        Text(
+                            text = "What Matters Now?",
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(tasks, key = { it.id }) { task ->
+
+                        SwipeToDeleteContainer(onDelete = { viewModel.deleteTask(task) }) {
+                            TaskItem(
+                                task = task,
+                                onToggleCompleted = { viewModel.toggleTaskCompletion(task, it) }
+                            )
+                        }
                     }
                 }
             }
@@ -402,8 +441,8 @@ fun TasksScreen(
             ) {
                 TaskInputPopup(
                     onAdd = { title, date, hour, min ->
-                        // Now you can save these to your Room Database!
-                        viewModel.addTask(title, date, hour, min)
+                        // Add task to the currently selected category
+                        viewModel.addTask(title, date, hour, min, selectedCategory)
                         showPopup = false
                     }
                 )
@@ -412,10 +451,9 @@ fun TasksScreen(
     }
 }
 
-@Preview(showBackground = true)
+
+@Preview(showBackground = true, backgroundColor = 0XFF000000)
 @Composable
-fun TaskInputPopupPreview() {
-    KarmaTheme {
-        TaskInputPopup(onAdd = { _, _, _, _ -> })
-    }
-}
+fun TaskScreen(){}
+
+
