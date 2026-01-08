@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.dvinix.karma.R
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,6 +29,7 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import com.dvinix.karma.features.tasks.TasksScreen
 import com.dvinix.karma.features.tasks.TasksViewModel
+import com.dvinix.karma.data.local.KarmaDatabase
 import kotlinx.serialization.Serializable
 
 
@@ -38,7 +40,6 @@ sealed class BottomBarIcon {
 
 @Serializable
 sealed interface Screen {
-    @Serializable data object Habits : Screen
     @Serializable data object Tasks : Screen
     @Serializable data object Focus : Screen
     @Serializable data object Settings : Screen
@@ -55,7 +56,6 @@ fun KarmaBottomBar(
         tonalElevation = 0.dp
     ) {
         val items = listOf(
-            Triple("Habits", BottomBarIcon.Vector(Icons.Default.DateRange), Screen.Habits),
             Triple("Tasks", BottomBarIcon.Vector(Icons.AutoMirrored.Filled.List), Screen.Tasks),
             Triple("Focus", BottomBarIcon.Drawable(R.drawable.hourglass), Screen.Focus),
             Triple("Settings", BottomBarIcon.Vector(Icons.Default.Settings), Screen.Settings)
@@ -133,11 +133,6 @@ fun NavGraph() {
                             backStack.add(Screen.Settings)
                         }
                     )
-                }
-                Screen.Habits -> NavEntry(Screen.Habits) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Habits Screen", color = Color.White)
-                    }
                 }
                 Screen.Focus -> NavEntry(Screen.Focus) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
