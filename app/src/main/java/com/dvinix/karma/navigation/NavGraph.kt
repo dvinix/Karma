@@ -29,6 +29,7 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import com.dvinix.karma.features.tasks.TasksScreen
 import com.dvinix.karma.features.tasks.TasksViewModel
+import com.dvinix.karma.features.focus.FocusScreen
 import com.dvinix.karma.data.local.KarmaDatabase
 import kotlinx.serialization.Serializable
 
@@ -135,9 +136,13 @@ fun NavGraph() {
                     )
                 }
                 Screen.Focus -> NavEntry(Screen.Focus) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Focus Screen", color = Color.White)
-                    }
+                    FocusScreen(
+                        task = null, // Will be enhanced later to pass selected task
+                        onBack = {
+                            backStack.clear()
+                            backStack.add(Screen.Tasks)
+                        }
+                    )
                 }
                 Screen.Settings -> NavEntry(Screen.Settings) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
