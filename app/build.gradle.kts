@@ -1,9 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
+    // Note: kotlin-android plugin not needed - AGP 9.0 uses built-in Kotlin
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
-
 }
 
 android {
@@ -34,12 +34,18 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
+    
     buildFeatures {
         compose = true
     }
+}
+
+// Kotlin configuration for AGP 9.0 built-in Kotlin (must be at project level, not inside android block)
+kotlin {
+    jvmToolchain(21)
 }
 
 dependencies {
@@ -55,8 +61,16 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
-    implementation("androidx.compose.material3:material3")
+    implementation(libs.material3)
+    implementation(libs.composeicons.fontawesome)
 
+
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation("androidx.compose.material3:material3:1.4.0")
+    implementation("androidx.compose.material3:material3-window-size-class:1.4.0")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.5.0-alpha12")
+    // Others
+    implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

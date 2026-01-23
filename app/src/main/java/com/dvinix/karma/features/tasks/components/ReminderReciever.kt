@@ -20,7 +20,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val notification = NotificationCompat.Builder(context, "karma_channel")
-            .setSmallIcon(R.drawable.reminder) // Ensure this icon exists in res/drawable
+            .setSmallIcon(R.drawable.reminder)
             .setContentTitle("KARMA")
             .setContentText(taskTitle)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

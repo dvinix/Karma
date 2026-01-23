@@ -34,14 +34,11 @@ class TasksViewModel(
     private val taskDao: TaskDao
 ) : AndroidViewModel(application) {
 
-    // Store categories persistently in a separate flow
     private val _permanentCategories = MutableStateFlow<Set<String>>(setOf("Inbox"))
-    
-    // Selected category state
+
     private val _selectedCategory = MutableStateFlow("Inbox")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
-    // Combine permanent categories with categories from tasks
     val categories: StateFlow<List<String>> = combine(
         _permanentCategories,
         taskDao.getAllCategories()
